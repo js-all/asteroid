@@ -96,23 +96,26 @@ class GElement {
                 pp.push(p);
                 ctx.beginPath();
                 ctx.fillStyle = 'hsl(' + (i * (255 / 4)) + ',100%, 50%)';
-                ctx.arc(p[0] - 1, p[1] - 1, 2, 0, pi * 2);
+                //ctx.arc(p[0] - 1, p[1] - 1, 2, 0, pi * 2);
                 ctx.fill();
                 ctx.closePath();
                 ctx.font = '10px Arial';
-                ctx.fillText((i + 1).toString(), p[0] - 5, p[1] - 5)
+                //ctx.fillText((i + 1).toString(), p[0] - 5, p[1] - 5)
             }
         }
     }
     touch(GEl: GElement) {
+        return GElement.touch(this.x, this.y, this.width, this.height, GEl.x, GEl.y, GEl.width, GEl.height)
+    }
+    static touch(x: number, y: number, w: number, h: number, x2: number, y2: number, w2: number, h2: number) {
         let X = false;
         let Y = false;
-        let entXW = GEl.x + GEl.width;
-        let entYH = GEl.y + GEl.height;
-        let thisXW = this.x + this.width;
-        let thisYH = this.y + this.height;
-        if ((thisXW <= entXW && thisXW >= GEl.x) || (this.x <= entXW && this.x >= GEl.x)) X = true;
-        if ((thisYH <= entYH && thisYH >= GEl.y) || (this.y <= entYH && this.y >= GEl.y)) Y = true;
+        let entXW = x2 + w2;
+        let entYH = y2 + h2;
+        let thisXW = x + w;
+        let thisYH = y + h;
+        if ((thisXW <= entXW && thisXW >= x2) || (x <= entXW && x >= x2)) X = true;
+        if ((thisYH <= entYH && thisYH >= y2) || (y <= entYH && y >= y2)) Y = true;
         let res = false;
         if (Y && X) res = true;
         return res;
@@ -249,8 +252,10 @@ class GPlayer extends GElement {
 }
 
 class GAsteroids extends GElement {
-    constructor(x :number, y: number) {
-        const size = Math.floor(Math.random() * (151 - 50) + 50)
+    fX: number;
+    fY: number;
+    static Asteroids: GAsteroids[] = [];
+    constructor(x: number, y: number, size: number = Math.floor(Math.random() * (151 - 50) + 50), fx: number = Math.random() * 12 - 6, fy: number = Math.random() * 12 - 6) {
         super(size, size, x, y, {
             type: 'path',
             color: 'white',
@@ -273,7 +278,68 @@ class GAsteroids extends GElement {
                 [20, 40],
                 [10, 20]
             ]
-        })
+        });
+        this.fX = fx;
+        this.fY = fy;
+        GAsteroids.Asteroids.push(this);
+        while (GAsteroids.Asteroids.length > 20) {
+            GAsteroids.Asteroids.splice(GAsteroids.Asteroids.length - 1, 1)
+        }
+
+    }
+    move() {
+        this.x += this.fX;
+        this.y += this.fY;
+        if (!GElement.touch(this.x, this.y, this.width, this.height, 0, 0, canvas.width, canvas.height)) {
+            this.x = this.x > canvas.width ? -this.width : this.x;
+            this.x = this.x + this.width < 0 ? canvas.width : this.x;
+            this.y = this.y > canvas.height ? -this.height : this.y;
+            this.y = this.y + this.height < 0 ? canvas.height : this.y;
+        }
+    }
+    kill() {
+        GAsteroids.Asteroids.splice(GAsteroids.Asteroids.indexOf(this), 1);
+    }
+}
+
+class GBullets extends GElement {
+    angle: number
+    onDeath: Function;
+    constructor(x: number, y: number, angle: number, onDeath: Function = () => { }) {
+        super(2, 10, x, y, { type: "square", color: "white" })
+        this.angle = angle;
+        this.onDeath = onDeath;
+    }
+    draw() {
+        ctx.save()
+        ctx.translate(this.x + this.width / 2, this.y + this.height / 2)
+        ctx.rotate(this.angle);
+        ctx.translate(-(this.x + this.width / 2), -(this.y + this.height / 2))
+        GElement.prototype.draw.call(this);
+        ctx.restore();
+        ctx.fillStyle = "white"
+    }
+    move() {
+        const speed = 10;
+        const fx = cos(this.angle - pi / 2) * speed;
+        const fy = sin(this.angle - pi / 2) * speed;
+        this.x += fx;
+        this.y += fy;
+        for (let i of GAsteroids.Asteroids) {
+            if (this.touch(i)) {
+                this.kill();
+                if (i.width / 2 > 50) {
+                    const fx: number = Math.random() * 12 - 6;
+                    const fy: number = Math.random() * 12 - 6;
+                    new GAsteroids(i.x, i.y, i.width / 2, fx, fy);
+                    new GAsteroids(i.x, i.y, i.width / 2, -fx, -fy);
+                }
+                i.kill();
+            }
+        }
+    }
+    kill() {
+        this.onDeath(this);
     }
 }
 
@@ -285,20 +351,36 @@ const a = new GAsteroids(200, 200);
 console.log(bg.style.color);
 (<rgb>(bg.style.color)).logColor();
 const player = new GPlayer(rgb.white, cw / 2, ch / 2, 3);
+const playerBullets: GBullets[] = [];
 bg.draw();
 function draw() {
     ctx.clearRect(0, 0, cw, ch);
     bg.draw();
     player.draw();
-    a.draw();
+    for (let i of GAsteroids.Asteroids) {
+        i.draw();
+    }
+    for (let i of playerBullets) {
+        i.draw();
+    }
 }
 
 function play() {
+    a.move();
+    for (let i of GAsteroids.Asteroids) {
+        i.move();
+    }
+    for (let i of playerBullets) {
+        i.move();
+        if (!GElement.touch(i.x, i.y, i.width, i.height, 0, 0, canvas.width, canvas.height)) {
+            i.kill();
+        }
+    }
 
 }
 
-draw.rate = 30;
-play.rate = 10;
+draw.rate = 60;
+play.rate = 60;
 
 draw.interval = setInterval(draw, 1000 / draw.rate);
 play.interval = setInterval(play, 1000 / play.rate);
@@ -345,3 +427,34 @@ function setangle(e: MouseEvent) {
     player.angle = angle + Math.PI / 2;
 }
 document.addEventListener('mousemove', setangle)
+document.addEventListener('mousedown', e => {
+    playerBullets.push(new GBullets((player.x + player.width / 2) + cos(player.d - pi / 2) * player.height / 2, (player.y + player.height / 2) + sin(player.d - pi / 2) * player.height / 2, player.d, (e: GBullets) => {
+        playerBullets.splice(playerBullets.indexOf(e), 1)
+    }));
+});
+
+let timeAS = 5000;
+
+function newAsteroids() {
+    let x = Math.floor(Math.random() * canvas.width + 1);
+    let y = Math.floor(Math.random() * canvas.height + 1);
+    if (Math.floor(Math.random() * 2) === 0) {
+        if (Math.floor(Math.random() * 2) === 0) {
+            x = 0;
+        } else {
+            x = canvas.width
+        }
+    } else {
+        if (Math.floor(Math.random() * 2) === 0) {
+            y = 0
+        } else {
+            y = canvas.height
+        }
+    }
+    new GAsteroids(x, y);
+    setTimeout(newAsteroids, Math.random() * timeAS);
+    timeAS -= 100;
+    timeAS = timeAS < 2000 ? 2000 : timeAS;
+}
+
+newAsteroids();

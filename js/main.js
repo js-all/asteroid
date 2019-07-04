@@ -105,24 +105,27 @@ var GElement = /** @class */ (function () {
                 pp.push(p);
                 ctx.beginPath();
                 ctx.fillStyle = 'hsl(' + (i * (255 / 4)) + ',100%, 50%)';
-                ctx.arc(p[0] - 1, p[1] - 1, 2, 0, pi * 2);
+                //ctx.arc(p[0] - 1, p[1] - 1, 2, 0, pi * 2);
                 ctx.fill();
                 ctx.closePath();
                 ctx.font = '10px Arial';
-                ctx.fillText((i + 1).toString(), p[0] - 5, p[1] - 5);
+                //ctx.fillText((i + 1).toString(), p[0] - 5, p[1] - 5)
             }
         }
     };
     GElement.prototype.touch = function (GEl) {
+        return GElement.touch(this.x, this.y, this.width, this.height, GEl.x, GEl.y, GEl.width, GEl.height);
+    };
+    GElement.touch = function (x, y, w, h, x2, y2, w2, h2) {
         var X = false;
         var Y = false;
-        var entXW = GEl.x + GEl.width;
-        var entYH = GEl.y + GEl.height;
-        var thisXW = this.x + this.width;
-        var thisYH = this.y + this.height;
-        if ((thisXW <= entXW && thisXW >= GEl.x) || (this.x <= entXW && this.x >= GEl.x))
+        var entXW = x2 + w2;
+        var entYH = y2 + h2;
+        var thisXW = x + w;
+        var thisYH = y + h;
+        if ((thisXW <= entXW && thisXW >= x2) || (x <= entXW && x >= x2))
             X = true;
-        if ((thisYH <= entYH && thisYH >= GEl.y) || (this.y <= entYH && this.y >= GEl.y))
+        if ((thisYH <= entYH && thisYH >= y2) || (y <= entYH && y >= y2))
             Y = true;
         var res = false;
         if (Y && X)
@@ -243,23 +246,141 @@ var GPlayer = /** @class */ (function (_super) {
     };
     return GPlayer;
 }(GElement));
+var GAsteroids = /** @class */ (function (_super) {
+    __extends(GAsteroids, _super);
+    function GAsteroids(x, y, size, fx, fy) {
+        if (size === void 0) { size = Math.floor(Math.random() * (151 - 50) + 50); }
+        if (fx === void 0) { fx = Math.random() * 12 - 6; }
+        if (fy === void 0) { fy = Math.random() * 12 - 6; }
+        var _this = _super.call(this, size, size, x, y, {
+            type: 'path',
+            color: 'white',
+            fill: false,
+            points: [
+                [10, 20],
+                [40, 10],
+                [70, 20],
+                [90, 20],
+                [80, 30],
+                [90, 40],
+                [90, 50],
+                [80, 60],
+                [70, 90],
+                [60, 80],
+                [40, 80],
+                [30, 70],
+                [30, 50],
+                [10, 50],
+                [20, 40],
+                [10, 20]
+            ]
+        }) || this;
+        _this.fX = fx;
+        _this.fY = fy;
+        GAsteroids.Asteroids.push(_this);
+        while (GAsteroids.Asteroids.length > 20) {
+            GAsteroids.Asteroids.splice(GAsteroids.Asteroids.length - 1, 1);
+        }
+        return _this;
+    }
+    GAsteroids.prototype.move = function () {
+        this.x += this.fX;
+        this.y += this.fY;
+        if (!GElement.touch(this.x, this.y, this.width, this.height, 0, 0, canvas.width, canvas.height)) {
+            this.x = this.x > canvas.width ? -this.width : this.x;
+            this.x = this.x + this.width < 0 ? canvas.width : this.x;
+            this.y = this.y > canvas.height ? -this.height : this.y;
+            this.y = this.y + this.height < 0 ? canvas.height : this.y;
+        }
+    };
+    GAsteroids.prototype.kill = function () {
+        GAsteroids.Asteroids.splice(GAsteroids.Asteroids.indexOf(this), 1);
+    };
+    GAsteroids.Asteroids = [];
+    return GAsteroids;
+}(GElement));
+var GBullets = /** @class */ (function (_super) {
+    __extends(GBullets, _super);
+    function GBullets(x, y, angle, onDeath) {
+        if (onDeath === void 0) { onDeath = function () { }; }
+        var _this = _super.call(this, 2, 10, x, y, { type: "square", color: "white" }) || this;
+        _this.angle = angle;
+        _this.onDeath = onDeath;
+        return _this;
+    }
+    GBullets.prototype.draw = function () {
+        ctx.save();
+        ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+        ctx.rotate(this.angle);
+        ctx.translate(-(this.x + this.width / 2), -(this.y + this.height / 2));
+        GElement.prototype.draw.call(this);
+        ctx.restore();
+        ctx.fillStyle = "white";
+    };
+    GBullets.prototype.move = function () {
+        var speed = 10;
+        var fx = cos(this.angle - pi / 2) * speed;
+        var fy = sin(this.angle - pi / 2) * speed;
+        this.x += fx;
+        this.y += fy;
+        for (var _i = 0, _a = GAsteroids.Asteroids; _i < _a.length; _i++) {
+            var i = _a[_i];
+            if (this.touch(i)) {
+                this.kill();
+                if (i.width / 2 > 50) {
+                    var fx_1 = Math.random() * 12 - 6;
+                    var fy_1 = Math.random() * 12 - 6;
+                    new GAsteroids(i.x, i.y, i.width / 2, fx_1, fy_1);
+                    new GAsteroids(i.x, i.y, i.width / 2, -fx_1, -fy_1);
+                }
+                i.kill();
+            }
+        }
+    };
+    GBullets.prototype.kill = function () {
+        this.onDeath(this);
+    };
+    return GBullets;
+}(GElement));
 var bg = new GElement(cw, ch, 0, 0, {
     type: 'square',
     color: rgb.black
 });
+var a = new GAsteroids(200, 200);
 console.log(bg.style.color);
 (bg.style.color).logColor();
 var player = new GPlayer(rgb.white, cw / 2, ch / 2, 3);
+var playerBullets = [];
 bg.draw();
 function draw() {
     ctx.clearRect(0, 0, cw, ch);
     bg.draw();
     player.draw();
+    for (var _i = 0, _a = GAsteroids.Asteroids; _i < _a.length; _i++) {
+        var i = _a[_i];
+        i.draw();
+    }
+    for (var _b = 0, playerBullets_1 = playerBullets; _b < playerBullets_1.length; _b++) {
+        var i = playerBullets_1[_b];
+        i.draw();
+    }
 }
 function play() {
+    a.move();
+    for (var _i = 0, _a = GAsteroids.Asteroids; _i < _a.length; _i++) {
+        var i = _a[_i];
+        i.move();
+    }
+    for (var _b = 0, playerBullets_2 = playerBullets; _b < playerBullets_2.length; _b++) {
+        var i = playerBullets_2[_b];
+        i.move();
+        if (!GElement.touch(i.x, i.y, i.width, i.height, 0, 0, canvas.width, canvas.height)) {
+            i.kill();
+        }
+    }
 }
-draw.rate = 30;
-play.rate = 10;
+draw.rate = 60;
+play.rate = 60;
 draw.interval = setInterval(draw, 1000 / draw.rate);
 play.interval = setInterval(play, 1000 / play.rate);
 var _$$c = canvas;
@@ -298,3 +419,34 @@ function setangle(e) {
     player.angle = angle + Math.PI / 2;
 }
 document.addEventListener('mousemove', setangle);
+document.addEventListener('mousedown', function (e) {
+    playerBullets.push(new GBullets((player.x + player.width / 2) + cos(player.d - pi / 2) * player.height / 2, (player.y + player.height / 2) + sin(player.d - pi / 2) * player.height / 2, player.d, function (e) {
+        playerBullets.splice(playerBullets.indexOf(e), 1);
+    }));
+});
+var timeAS = 5000;
+function newAsteroids() {
+    var x = Math.floor(Math.random() * canvas.width + 1);
+    var y = Math.floor(Math.random() * canvas.height + 1);
+    if (Math.floor(Math.random() * 2) === 0) {
+        if (Math.floor(Math.random() * 2) === 0) {
+            x = 0;
+        }
+        else {
+            x = canvas.width;
+        }
+    }
+    else {
+        if (Math.floor(Math.random() * 2) === 0) {
+            y = 0;
+        }
+        else {
+            y = canvas.height;
+        }
+    }
+    new GAsteroids(x, y);
+    setTimeout(newAsteroids, Math.random() * timeAS);
+    timeAS -= 100;
+    timeAS = timeAS < 2000 ? 2000 : timeAS;
+}
+newAsteroids();
