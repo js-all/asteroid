@@ -248,10 +248,40 @@ class GPlayer extends GElement {
     }
 }
 
+class GAsteroids extends GElement {
+    constructor(x :number, y: number) {
+        const size = Math.floor(Math.random() * (151 - 50) + 50)
+        super(size, size, x, y, {
+            type: 'path',
+            color: 'white',
+            fill: false,
+            points: [
+                [10, 20],
+                [40, 10],
+                [70, 20],
+                [90, 20],
+                [80, 30],
+                [90, 40],
+                [90, 50],
+                [80, 60],
+                [70, 90],
+                [60, 80],
+                [40, 80],
+                [30, 70],
+                [30, 50],
+                [10, 50],
+                [20, 40],
+                [10, 20]
+            ]
+        })
+    }
+}
+
 const bg = new GElement(cw, ch, 0, 0, {
     type: 'square',
     color: rgb.black
 });
+const a = new GAsteroids(200, 200);
 console.log(bg.style.color);
 (<rgb>(bg.style.color)).logColor();
 const player = new GPlayer(rgb.white, cw / 2, ch / 2, 3);
@@ -260,6 +290,7 @@ function draw() {
     ctx.clearRect(0, 0, cw, ch);
     bg.draw();
     player.draw();
+    a.draw();
 }
 
 function play() {
