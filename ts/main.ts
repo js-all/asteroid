@@ -28,6 +28,9 @@ interface Style {
 
 document.body.appendChild(canvas)
 
+let score = 0;
+let subScore = 0;
+
 class GElement {
     width: number;
     height: number;
@@ -246,8 +249,6 @@ class GPlayer extends GElement {
         ctx.translate(-(this.x + this.width / 2), -(this.y + this.height / 2))
         GElement.prototype.draw.call(this);
         ctx.restore();
-        ctx.fillStyle = "white"
-        ctx.fillText((this.d / Math.PI * 180).toString(), 20, 10)
     }
 }
 
@@ -335,6 +336,7 @@ class GBullets extends GElement {
                     new GAsteroids(i.x, i.y, i.width / 2, -fx, -fy);
                 }
                 i.kill();
+                score += 100
             }
         }
     }
@@ -363,12 +365,34 @@ function draw() {
     for (let i of playerBullets) {
         i.draw();
     }
+    ctx.fillStyle = 'white';
+    ctx.font = '25px Arial'
+    ctx.fillText(score.toString(), 25, 40);
 }
 
 function play() {
+    if (subScore >= 30) {
+        score += 10;
+        subScore = 0;
+    } else {
+        subScore++;
+    }
     a.move();
     for (let i of GAsteroids.Asteroids) {
         i.move();
+    }
+    for (let i of GAsteroids.Asteroids) {
+        if (player.touch(i)) {
+            clearInterval(play.interval)
+            clearInterval(draw.interval)
+            ctx.fillStyle = new rgb(0, 0, 0, 0.5).value;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.save();
+            ctx.font = '100px Arial'
+            ctx.fillText('you lose', canvas.width / 2 - 170, canvas.height / 2 - 50);
+            ctx.restore();
+        }
     }
     for (let i of playerBullets) {
         i.move();

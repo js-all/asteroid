@@ -21,6 +21,8 @@ var ctx = canvas.getContext('2d');
 var cw = canvas.width;
 var ch = canvas.height;
 document.body.appendChild(canvas);
+var score = 0;
+var subScore = 0;
 var GElement = /** @class */ (function () {
     function GElement(width, height, x, y, style) {
         if (typeof width !== 'number')
@@ -241,8 +243,6 @@ var GPlayer = /** @class */ (function (_super) {
         ctx.translate(-(this.x + this.width / 2), -(this.y + this.height / 2));
         GElement.prototype.draw.call(this);
         ctx.restore();
-        ctx.fillStyle = "white";
-        ctx.fillText((this.d / Math.PI * 180).toString(), 20, 10);
     };
     return GPlayer;
 }(GElement));
@@ -334,6 +334,7 @@ var GBullets = /** @class */ (function (_super) {
                     new GAsteroids(i.x, i.y, i.width / 2, -fx_1, -fy_1);
                 }
                 i.kill();
+                score += 100;
             }
         }
     };
@@ -364,15 +365,39 @@ function draw() {
         var i = playerBullets_1[_b];
         i.draw();
     }
+    ctx.fillStyle = 'white';
+    ctx.font = '25px Arial';
+    ctx.fillText(score.toString(), 25, 40);
 }
 function play() {
+    if (subScore >= 30) {
+        score += 10;
+        subScore = 0;
+    }
+    else {
+        subScore++;
+    }
     a.move();
     for (var _i = 0, _a = GAsteroids.Asteroids; _i < _a.length; _i++) {
         var i = _a[_i];
         i.move();
     }
-    for (var _b = 0, playerBullets_2 = playerBullets; _b < playerBullets_2.length; _b++) {
-        var i = playerBullets_2[_b];
+    for (var _b = 0, _c = GAsteroids.Asteroids; _b < _c.length; _b++) {
+        var i = _c[_b];
+        if (player.touch(i)) {
+            clearInterval(play.interval);
+            clearInterval(draw.interval);
+            ctx.fillStyle = new rgb(0, 0, 0, 0.5).value;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.save();
+            ctx.font = '100px Arial';
+            ctx.fillText('you lose', canvas.width / 2 - 170, canvas.height / 2 - 50);
+            ctx.restore();
+        }
+    }
+    for (var _d = 0, playerBullets_2 = playerBullets; _d < playerBullets_2.length; _d++) {
+        var i = playerBullets_2[_d];
         i.move();
         if (!GElement.touch(i.x, i.y, i.width, i.height, 0, 0, canvas.width, canvas.height)) {
             i.kill();
